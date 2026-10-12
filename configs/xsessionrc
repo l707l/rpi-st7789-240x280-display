@@ -1,0 +1,5 @@
+#!/bin/sh
+if [ -f "$HOME/.Xresources" ] && command -v xrdb >/dev/null 2>&1; then
+    xrdb -merge "$HOME/.Xresources" || true
+fi
+/usr/local/bin/setup-display.sh || true

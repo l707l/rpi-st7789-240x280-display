@@ -1,0 +1,6 @@
+*.raw
+*.log
+*.tmp
+build/
+__pycache__/
+*.pyc

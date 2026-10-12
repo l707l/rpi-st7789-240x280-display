@@ -1,0 +1,80 @@
+Global {
+  edge=bottom
+  align=left
+  margin=0
+  widthtype=pixel
+  width=240
+  height=16
+  transparent=1
+  tintcolor=#1c1c1c
+  alpha=255
+  setdocktype=1
+  setpartialstrut=1
+  usefontcolor=1
+  fontcolor=#ffffff
+  background=0
+}
+Plugin {
+  type=space
+  Config {
+    Size=8
+  }
+}
+Plugin {
+  type=menu
+  Config {
+    image=/usr/share/lxde/images/lxde-icon.png
+    system {
+    }
+    separator {
+    }
+    item {
+      command=run
+    }
+    separator {
+    }
+    item {
+      image=gnome-logout
+      command=logout
+    }
+  }
+}
+Plugin {
+  type=taskbar
+  expand=1
+  Config {
+    tooltips=1
+    IconsOnly=1
+    AcceptSkipPager=1
+    ShowIconified=1
+    ShowMapped=1
+    ShowAllDesks=0
+    ShowSquareBrackets=0
+    UseMouseWheel=1
+    UseUrgencyHint=1
+    FlatButton=1
+    MaxTaskWidth=46
+    spacing=1
+  }
+}
+Plugin {
+  type=cpu
+  Config {
+  }
+}
+Plugin {
+  type=dclock
+  Config {
+    ClockFmt=%H:%M
+    TooltipFmt=%A %x
+    BoldFont=1
+    IconOnly=0
+    CenterText=1
+  }
+}
+Plugin {
+  type=space
+  Config {
+    Size=8
+  }
+}

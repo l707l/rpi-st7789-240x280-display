@@ -1,0 +1,4 @@
+@/usr/local/bin/setup-display.sh
+@lxpanel --profile LXDE
+@pcmanfm --desktop --profile LXDE
+@bash -c "sleep 1.5; pcmanfm --reconfigure; xdotool mousemove 120 140 click 1"

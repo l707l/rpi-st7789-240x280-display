@@ -1,0 +1,14 @@
+[Unit]
+Description=FBCP Framebuffer SPI Driver
+DefaultDependencies=no
+After=local-fs.target
+Before=sysinit.target basic.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/fbcp
+Restart=always
+RestartSec=1
+
+[Install]
+WantedBy=sysinit.target

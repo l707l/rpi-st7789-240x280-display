@@ -1,0 +1,234 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index abd94b2..3828dbf 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -33,7 +33,7 @@ if (BOARD_REVISION MATCHES "(0002)|(0003)|(0004)|(0005)|(0006)|(0007)|(0008)|(00
+ elseif(BOARD_REVISION MATCHES "(a01041)|(a21041)")
+ 	message(STATUS "Detected this board to be a Pi 2 Model B < rev 1.2 with ARMv7-A instruction set CPU.")
+ 	set(DEFAULT_TO_ARMV7A ON)
+-elseif(BOARD_REVISION MATCHES "(a02082)|(a22082)|(a020d3)|(9020e0)|(a03111)|(b03111)|(b03140)|(c03111)" OR BOARD_REVISION MATCHES "(c03130)|(d03114)")
++elseif(BOARD_REVISION MATCHES "(a02082)|(a22082)|(a020d3)|(a020d4)|(a020d4)|(a020d4)|(a020d4)|(a020d4)|(9020e0)|(a03111)|(b03111)|(b03140)|(c03111)" OR BOARD_REVISION MATCHES "(c03130)|(d03114)")
+ 	message(STATUS "Detected this Pi to be one of: Pi 2B rev. 1.2, 3B, 3B+, 3A+, CM3, CM3 lite, CM4, 4B(1GB,2GB,4GB,8GB RAM) or Pi400, with 4 hardware cores and ARMv8-A instruction set CPU.")
+ 	set(DEFAULT_TO_ARMV8A ON)
+ else()
+@@ -46,7 +46,57 @@ if (SINGLE_CORE_BOARD)
+   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSINGLE_CORE_BOARD=1")
+ endif()
+ 
++if (CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64")
++  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -funsafe-math-optimizations")
++else()
++  if (CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64")
++  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -funsafe-math-optimizations")
++else()
++  if (CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64")
++  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -funsafe-math-optimizations")
++else()
++  if (CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64")
++  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -funsafe-math-optimizations")
++else()
++  if (CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64")
++  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -funsafe-math-optimizations")
++else()
+   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -marm -mabi=aapcs-linux -mhard-float -mfloat-abi=hard -mlittle-endian -mtls-dialect=gnu2 -funsafe-math-optimizations")
++endif()
++if (DISPLAY_WIDTH)
++  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DDISPLAY_NATIVE_WIDTH=${DISPLAY_WIDTH}")
++endif()
++if (DISPLAY_HEIGHT)
++  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DDISPLAY_NATIVE_HEIGHT=${DISPLAY_HEIGHT}")
++endif()
++endif()
++if (DISPLAY_WIDTH)
++  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DDISPLAY_NATIVE_WIDTH=${DISPLAY_WIDTH}")
++endif()
++if (DISPLAY_HEIGHT)
++  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DDISPLAY_NATIVE_HEIGHT=${DISPLAY_HEIGHT}")
++endif()
++endif()
++if (DISPLAY_WIDTH)
++  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DDISPLAY_NATIVE_WIDTH=${DISPLAY_WIDTH}")
++endif()
++if (DISPLAY_HEIGHT)
++  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DDISPLAY_NATIVE_HEIGHT=${DISPLAY_HEIGHT}")
++endif()
++endif()
++if (DISPLAY_WIDTH)
++  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DDISPLAY_NATIVE_WIDTH=${DISPLAY_WIDTH}")
++endif()
++if (DISPLAY_HEIGHT)
++  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DDISPLAY_NATIVE_HEIGHT=${DISPLAY_HEIGHT}")
++endif()
++endif()
++if (DISPLAY_WIDTH)
++  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DDISPLAY_NATIVE_WIDTH=${DISPLAY_WIDTH}")
++endif()
++if (DISPLAY_HEIGHT)
++  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DDISPLAY_NATIVE_HEIGHT=${DISPLAY_HEIGHT}")
++endif()
+ 
+ option(ARMV6Z "Target a Raspberry Pi with ARMv6Z instruction set (Pi 1A, 1A+, 1B, 1B+, Zero, Zero W)" ${DEFAULT_TO_ARMV6Z})
+ if (ARMV6Z)
+diff --git a/config.h b/config.h
+index 65d8067..963645b 100644
+--- a/config.h
++++ b/config.h
+@@ -158,7 +158,7 @@
+ // #define DISPLAY_ROTATE_180_DEGREES
+ 
+ // If defined, displays in landscape. Undefine to display in portrait.
+-#define DISPLAY_OUTPUT_LANDSCAPE
++//#define DISPLAY_OUTPUT_LANDSCAPE
+ 
+ // If defined, the source video frame is scaled to fit the SPI display by stretching to fit, ignoring
+ // aspect ratio. Enabling this will cause e.g. 16:9 1080p source to be stretched to fully cover
+diff --git a/dma.cpp b/dma.cpp
+index d2844e2..834eea3 100644
+--- a/dma.cpp
++++ b/dma.cpp
+@@ -1,3 +1,27 @@
++
++#include <stdint.h>
++#include <stddef.h>
++static inline void uncached_memcpy(void *dst, const void *src, size_t bytes)
++{
++  volatile uint8_t *d = (volatile uint8_t *)dst;
++  const uint8_t *s = (const uint8_t *)src;
++  while (bytes >= 8 && ((uintptr_t)d % 8 == 0) && ((uintptr_t)s % 8 == 0)) {
++    *(volatile uint64_t *)d = *(const uint64_t *)s;
++    d += 8;
++    s += 8;
++    bytes -= 8;
++  }
++  while (bytes >= 4 && ((uintptr_t)d % 4 == 0) && ((uintptr_t)s % 4 == 0)) {
++    *(volatile uint32_t *)d = *(const uint32_t *)s;
++    d += 4;
++    s += 4;
++    bytes -= 4;
++  }
++  while (bytes > 0) {
++    *d++ = *s++;
++    bytes--;
++  }
++}
+ #ifndef KERNEL_MODULE
+ #include <stdio.h> // fprintf, stderr
+ #include <stdlib.h> // exit
+@@ -235,7 +259,10 @@ int InitDMA()
+ 
+ #if !defined(KERNEL_MODULE)
+   dmaCb = AllocateUncachedGpuMemory(sizeof(DMAControlBlock) * NUM_DMA_CBS, "DMA control blocks");
+-  memset(dmaCb.virtualAddr, 0, dmaCb.sizeBytes); // Some fields of the CBs (debug, reserved) are initialized to zero and assumed to stay so throughout app lifetime.
++  {
++    volatile uint32_t *cbZero = (volatile uint32_t *)dmaCb.virtualAddr;
++    for (size_t i = 0; i < dmaCb.sizeBytes / sizeof(uint32_t); ++i) cbZero[i] = 0;
++  } // Some fields of the CBs (debug, reserved) are initialized to zero and assumed to stay so throughout app lifetime.
+   firstFreeCB = (volatile DMAControlBlock *)dmaCb.virtualAddr;
+ 
+   dmaSourceBuffer = AllocateUncachedGpuMemory(SHARED_MEMORY_SIZE*2, "DMA source data");
+@@ -553,7 +580,7 @@ void SPIDMATransfer(SPITask *task)
+     else
+ #endif
+     {
+-      memcpy(txPtr, data, sendSize);
++      uncached_memcpy(txPtr, data, sendSize);
+       data += sendSize;
+     }
+ 
+@@ -680,7 +707,7 @@ void SPIDMATransfer(SPITask *task)
+   // that pointer is shared to userland, and it is proving troublesome to make it both userland-writable as well as cache-bypassing DMA coherent.
+   // Therefore these two memory areas are separate for now, and we memcpy() from SPI ring buffer to an intermediate 'dmaSourceMemory' memory area to perform
+   // the DMA transfer. Is there a way to avoid this intermediate buffer? That would improve performance a bit.
+-  memcpy(dmaSourceBuffer.virtualAddr, headerAddr, task->PayloadSize() + 4);
++  uncached_memcpy(dmaSourceBuffer.virtualAddr, headerAddr, task->PayloadSize() + 4);
+ 
+   volatile DMAControlBlock *cb = (volatile DMAControlBlock *)dmaCb.virtualAddr;
+   volatile DMAControlBlock *txcb = &cb[0];
+diff --git a/spi.cpp b/spi.cpp
+index d156f2d..1cb92f0 100644
+--- a/spi.cpp
++++ b/spi.cpp
+@@ -49,7 +49,8 @@ volatile SPIRegisterFile *spi = 0;
+ 
+ // Points to the system timer register. N.B. spec sheet says this is two low and high parts, in an 32-bit aligned (but not 64-bit aligned) address. Profiling shows
+ // that Pi 3 Model B does allow reading this as a u64 load, and even when unaligned, it is around 30% faster to do so compared to loading in parts "lo | (hi << 32)".
+-volatile uint64_t *systemTimerRegister = 0;
++volatile uint32_t *systemTimerLow = 0;
++volatile uint32_t *systemTimerHigh = 0;
+ 
+ void DumpSPICS(uint32_t reg)
+ {
+@@ -515,7 +516,8 @@ int InitSPI()
+   if (bcm2835 == MAP_FAILED) FATAL_ERROR("mapping /dev/mem failed");
+   spi = (volatile SPIRegisterFile*)((uintptr_t)bcm2835 + BCM2835_SPI0_BASE);
+   gpio = (volatile GPIORegisterFile*)((uintptr_t)bcm2835 + BCM2835_GPIO_BASE);
+-  systemTimerRegister = (volatile uint64_t*)((uintptr_t)bcm2835 + BCM2835_TIMER_BASE + 0x04); // Generates an unaligned 64-bit pointer, but seems to be fine.
++  systemTimerLow = (volatile uint32_t*)((uintptr_t)bcm2835 + BCM2835_TIMER_BASE + 0x04);
++  systemTimerHigh = (volatile uint32_t*)((uintptr_t)bcm2835 + BCM2835_TIMER_BASE + 0x08); // Generates an unaligned 64-bit pointer, but seems to be fine.
+   // TODO: On graceful shutdown, (ctrl-c signal?) close(mem_fd)
+ #endif
+ 
+diff --git a/st7735r.cpp b/st7735r.cpp
+index ceac386..6cea073 100644
+--- a/st7735r.cpp
++++ b/st7735r.cpp
+@@ -57,6 +57,9 @@ void InitST7735R()
+ #endif
+ 
+     madctl |= MADCTL_ROW_ADDRESS_ORDER_SWAP;
++#if defined(ST7789) || defined(ST7789VW)
++    madctl |= MADCTL_COLUMN_ADDRESS_ORDER_SWAP;
++#endif
+ 
+ #if defined(WAVESHARE_ST7789VW_HAT) || defined(WAVESHARE_ST7735S_HAT)
+     madctl ^= MADCTL_ROTATE_180_DEGREES;
+@@ -92,7 +95,7 @@ void InitST7735R()
+     // memory in row addresses Y = 319-(0...239) = 319...80 range. To view this range, we must scroll the view by +80 units in Y
+     // direction so that contents of Y=80...319 is displayed instead of Y=0...239.
+     if ((madctl & MADCTL_ROW_ADDRESS_ORDER_SWAP))
+-      SPI_TRANSFER(0x37/*VSCSAD: Vertical Scroll Start Address of RAM*/, 0, 320 - DISPLAY_WIDTH);
++      SPI_TRANSFER(0x37/*VSCSAD: Vertical Scroll Start Address of RAM*/, 0, 20);
+ #endif
+ 
+     // TODO: The 0xB1 command is not Frame Rate Control for ST7789VW, 0xB3 is (add support to it)
+diff --git a/st7735r.h b/st7735r.h
+index 6875252..0dad112 100644
+--- a/st7735r.h
++++ b/st7735r.h
+@@ -16,8 +16,9 @@
+ #define DISPLAY_WRITE_PIXELS 0x2C
+ 
+ #if defined(ST7789) || defined(ST7789VW)
++#undef DISPLAY_NATIVE_HEIGHT
+ #define DISPLAY_NATIVE_WIDTH 240
+-#define DISPLAY_NATIVE_HEIGHT 240
++#define DISPLAY_NATIVE_HEIGHT 280
+ #elif defined(ST7735R)
+ #define DISPLAY_NATIVE_WIDTH 128
+ #define DISPLAY_NATIVE_HEIGHT 160
+diff --git a/tick.h b/tick.h
+index 2036168..94183db 100644
+--- a/tick.h
++++ b/tick.h
+@@ -5,8 +5,19 @@
+ #include <unistd.h>
+ 
+ // Initialized in spi.cpp along with the rest of the BCM2835 peripheral:
+-extern volatile uint64_t *systemTimerRegister;
+-#define tick() (*systemTimerRegister)
++extern volatile uint32_t *systemTimerLow;
++extern volatile uint32_t *systemTimerHigh;
++
++static inline uint64_t tick() {
++  uint32_t hi = *systemTimerHigh;
++  uint32_t lo = *systemTimerLow;
++  uint32_t hi2 = *systemTimerHigh;
++  if (hi != hi2) {
++    lo = *systemTimerLow;
++    hi = hi2;
++  }
++  return (((uint64_t)hi) << 32) | lo;
++}
+ 
+ #endif
+ 
