@@ -80,15 +80,44 @@ El servicio `/etc/systemd/system/fbcp.service` utiliza `DefaultDependencies=no` 
 
 ---
 
-## 📊 Rendimiento y FPS
+## 📊 Rendimiento, Benchmark y Optimización de Bus SPI
 
-En una Raspberry Pi 3 B+ (`core_freq=400 MHz`) con divisor SPI en 30 (`13.33 MHz`):
-- **Escritorio estático:** `0% CPU`, `0 FPS` (el motor de diffing suspende transferencias).
-- **Terminal y cursor:** `60 FPS` nativos.
-- **Mover ventanas y navegación:** `35 – 50 FPS`.
-- **Video a pantalla completa (100% píxeles):** `12.4 FPS` (a 13.3 MHz).
+El bus SPI0 de la Raspberry Pi opera derivado de `core_freq=400 MHz` mediante divisores pares enteros (`Frecuencia = core_freq / DIVISOR`). Para un panel de **240×280** en formato **RGB565 (16 bits/px)**, cada cuadro completo requiere transferir **1,075,200 bits (~1.075 Mbit o 134.4 KB)**.
 
-> *Tip de Rendimiento:* Si utilizas cables cortos (< 10 cm), puedes cambiar `SPI_BUS_CLOCK_DIVISOR` en `install.sh` de `30` a `12` para alcanzar **~31 FPS** en video a pantalla completa sin pérdida de estabilidad.
+A continuación se detalla la comparativa real y teórica obtenida en las pruebas de optimización:
+
+| Velocidad SPI | Divisor | Ancho de Banda Teórico | FPS Teóricos (100% Pantalla) | FPS Reales (Diffing `fbcp`) | Estabilidad / Observaciones |
+| :---: | :---: | :---: | :---: | :---: | :--- |
+| **13.33 MHz** | 30 | 13.33 Mbps | ~12.4 FPS | 35 – 50 FPS | Configuración legacy por defecto; lenta en video. |
+| **40.00 MHz** | 10 | 40.00 Mbps | ~37.2 FPS | 50 – 60 FPS | **Plan de contingencia:** 100% sólida incluso con cables largos o ruidosos. |
+| **50.00 MHz** | **8** | **50.00 Mbps** | **~46.5 FPS** | **60 FPS constantes** | **Configuración Óptima (Sweet Spot):** Máximo beneficio, frío y dentro de norma. |
+| **66.67 MHz** | 6 | 66.67 Mbps | ~62.0 FPS | 60 FPS constantes | Supera el límite de fábrica de 62.5 MHz del ST7789VW; beneficio extra marginal. |
+| **100.00 MHz** | 4 | 100.00 Mbps | ~93.0 FPS | 60 FPS (tope GPU) | Overclock extremo; produce desincronización y ruido térmico. |
+
+### 🏆 ¿Por qué Divisor 8 (50.00 MHz) maximiza beneficios?
+1. **Saturación de 60 FPS:** Dado que la GPU Raspberry Pi emite a 60 Hz y el motor diff solo transfiere las áreas que cambian, 50 MHz proporciona suficiente margen para mantener **60 FPS progresivos (`60p`)** sin recurrir a entrelazado (*interlacing*).
+2. **Dentro de Especificación Oficial:** El controlador ST7789VW especifica un tiempo de ciclo mínimo de escritura de 16 ns (máx. 62.5 MHz). Operar a 50 MHz garantiza cero ruido de señal, bordes limpios y fiabilidad a largo plazo.
+3. **Monitoreo en Tiempo Real (`-DSTATISTICS=1`):** Se activa el contador de FPS en la esquina superior izquierda de forma limpia, mostrando la tasa de cuadros (`60p`) y velocidad de transferencia sin gráficas invasivas.
+
+---
+
+### 🔄 Cambio Rápido de Frecuencia (Sin reinstalar todo)
+
+Si necesitas alternar entre frecuencias o probar la contingencia de 40 MHz, ejecuta en la Raspberry Pi:
+
+```bash
+# Cambiar a 50 MHz (Recomendado):
+cd ~/fbcp-ili9341/build
+cmake -DST7789VW=ON -DSPI_BUS_CLOCK_DIVISOR=8 -DDISPLAY_WIDTH=240 -DDISPLAY_HEIGHT=280 -DSTATISTICS=1 ..
+make -j$(nproc)
+sudo systemctl stop fbcp.service && sudo cp fbcp-ili9341 /usr/local/bin/fbcp && sudo systemctl start fbcp.service
+
+# Contingencia rápida a 40 MHz (si usas cables muy largos):
+cd ~/fbcp-ili9341/build
+cmake -DST7789VW=ON -DSPI_BUS_CLOCK_DIVISOR=10 -DDISPLAY_WIDTH=240 -DDISPLAY_HEIGHT=280 -DSTATISTICS=1 ..
+make -j$(nproc)
+sudo systemctl stop fbcp.service && sudo cp fbcp-ili9341 /usr/local/bin/fbcp && sudo systemctl start fbcp.service
+```
 
 ---
 

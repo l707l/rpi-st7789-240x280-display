@@ -79,8 +79,10 @@ sudo -u "$TARGET_USER" cmake -DST7789VW=ON \
       -DGPIO_TFT_DATA_CONTROL=25 \
       -DGPIO_TFT_RESET_PIN=24 \
       -DGPIO_TFT_BACKLIGHT=0 \
-      -DSPI_BUS_CLOCK_DIVISOR=30 \
-      -DSTATISTICS=0 \
+      -DDISPLAY_WIDTH=240 \
+      -DDISPLAY_HEIGHT=280 \
+      -DSPI_BUS_CLOCK_DIVISOR=8 \
+      -DSTATISTICS=1 \
       -DCMAKE_BUILD_TYPE=Release ..
 sudo -u "$TARGET_USER" make -j$(nproc)
 
